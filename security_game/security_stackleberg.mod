@@ -5,17 +5,19 @@ set T; # start with 1
 set ROWS; 
 set COLUMNS;
 
-# Targets
-# set TARGETS; # Position in grid, starting with 0,0 = 0, 0,1 = 1, etc.
-set TARGET_ROWS; # Calculate this from V
-set TARGET_COLUMNS; # Calculate this from V
-
 # States
 set STATE; # Covered(0), Uncovered(1)
 set ROLE; # Defender(0), Attacker(1)
 
 # Grid
 param V{ROWS, COLUMNS} binary; # Encoding: 0 = blocked, 1 = empty, 2 = target
+
+# Targets
+# set TARGETS; # Position in grid, starting with 0,0 = 0, 0,1 = 1, etc.
+# set TARGET_ROWS; # Calculate this from V
+# set TARGET_COLUMNS; # Calculate this from V
+set TARGET_ROWS := {i in ROWS: exists{j in COLUMNS} V[i,j] = 2};
+set TARGET_COLUMNS := {j in COLUMNS: exists{i in ROWS} V[i,j] = 2};
 
 # Utility
 param U{ROLE, STATE, TARGET_ROWS, TARGET_COLUMNS};
@@ -36,6 +38,9 @@ var d;
 
 # Expected utility of the attacker
 var k;
+
+# Auxiliary variable
+var c{r in ROWS, c in COLUMNS, t in R} := sum{r_p in ROWS, c_p in COLUMNS} alpha[r, c, r_p, c_p, t];
 
 # Objective
 maximize obj:
@@ -81,14 +86,10 @@ subject to SumToOneAttacker{t in T}:
 
 # ERASER constraints
 
-subject to defenderExpectedPayoff{r in TARGET_ROWS, c in TARGET_COLUMNS}: # All targets
-    d - (c_t*U[0, 0, r, c] + (1-c_t)*U[0, 1, r, c]) <= (1-a_t)*Z
+subject to defenderExpectedPayoff{r in TARGET_ROWS, c in TARGET_COLUMNS, t in T}: # All targets
+    d - (c[r, c, t]*U[0, 0, r, c] + (1-c[r, c, t])*U[0, 1, r, c]) <= (1-x[r,c,t])*Z
 ;
 
-subject to attackerStrategy{r in TARGET_ROWS, c in TARGET_COLUMNS}: # All targets
-    0 <= k - (c_t*U[1, 0, t] + (1-c_t)*U[1, 1, t]) <= (1-a_t)*Z
+subject to attackerStrategy{r in TARGET_ROWS, c in TARGET_COLUMNS, t in T}: # All targets
+    0 <= k - (c[r, c, t]*U[1, 0, r, c] + (1-c[r, c, t])*U[1, 1, r, c]) <= (1-x[r,c,t])*Z
 ;
-
-# TODO: Definir c_t, a_t
-
-# Mapping of targets with V
